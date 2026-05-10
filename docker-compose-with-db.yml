@@ -1,0 +1,45 @@
+version: "3.8"
+services:
+  db:
+    image: postgres:15-alpine
+    environment:
+      POSTGRES_USER: tracker_db_user
+      POSTGRES_PASSWORD: tracker_db_password
+      POSTGRES_DB: tracker
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    ports:
+      - "5432:5432"
+
+  backend:
+    build: ./backend
+    ports:
+      - "8000:8000"
+    volumes:
+      - backend_config:/app/config_data
+    environment:
+      - DB_TYPE=postgresql
+      - DB_HOST=db
+      - DB_PORT=5432
+      - DB_USER=tracker_db_user
+      - DB_PASSWORD=tracker_db_password
+      - DB_NAME=tracker
+      - ADMIN_USERNAME=${ADMIN_USERNAME:-admin}
+      - ADMIN_PASSWORD=${ADMIN_PASSWORD:-admin}
+      - ADMIN_EMAIL=${ADMIN_EMAIL:-admin@tracker.local}
+      - SMTP_HOST=${SMTP_HOST:-}
+      - SMTP_PORT=${SMTP_PORT:-587}
+      - SMTP_USER=${SMTP_USER:-}
+      - SMTP_PASSWORD=${SMTP_PASSWORD:-}
+      - SMTP_TLS=${SMTP_TLS:-true}
+    depends_on:
+      - db
+
+  frontend:
+    build: ./frontend
+    ports:
+      - "8080:80"
+
+volumes:
+  postgres_data:
+  backend_config:
