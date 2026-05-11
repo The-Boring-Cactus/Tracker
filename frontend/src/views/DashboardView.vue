@@ -2,6 +2,8 @@
 import { ref, onMounted } from 'vue'
 import { useRouter } from 'vue-router'
 import { useAuthStore } from '../stores/auth'
+import NotificationCenter from '../components/NotificationCenter.vue'
+import WorkspaceSettingsModal from '../components/WorkspaceSettingsModal.vue'
 
 const router = useRouter()
 const authStore = useAuthStore()
@@ -14,12 +16,19 @@ const expandedWorkspaces = ref(new Set())
 
 const isLoading = ref(true)
 
+const openSearch = () => {
+  window.dispatchEvent(new CustomEvent('open-search'))
+}
+
 // Modals state
 const showWorkspaceModal = ref(false)
 const workspaceForm = ref({ name: '', description: '' })
 
 const showProjectModal = ref(false)
 const projectForm = ref({ name: '', description: '' })
+
+const showMembersModal = ref(false)
+const selectedMembersWorkspaceId = ref(null)
 
 onMounted(async () => {
   if (!authStore.token) {
@@ -108,6 +117,11 @@ const openProjectModal = (workspaceId) => {
   showProjectModal.value = true
 }
 
+const openMembersModal = (workspaceId) => {
+  selectedMembersWorkspaceId.value = workspaceId
+  showMembersModal.value = true
+}
+
 const submitProject = async () => {
   if (!selectedWorkspaceId.value || !projectForm.value.name) return
   
@@ -156,8 +170,15 @@ const isOverdue = (endDate) => {
   <div class="min-h-screen bg-slate-50 flex flex-col text-slate-800">
     <!-- Navbar -->
     <header class="bg-slate-100 border-b border-slate-300 px-6 py-4 flex items-center justify-between shadow-sm sticky top-0 z-10">
-      <h1 class="text-2xl font-extrabold text-slate-900 tracking-tight">Tracker</h1>
+      <div class="flex items-center space-x-8 w-full max-w-3xl">
+        <h1 class="text-2xl font-extrabold text-slate-900 tracking-tight">Tracker</h1>
+        <div class="flex-1 relative group cursor-pointer" @click="openSearch">
+          <svg class="w-5 h-5 text-slate-400 absolute left-3 top-1/2 -translate-y-1/2 group-hover:text-sky-500 transition" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"></path></svg>
+          <input type="text" placeholder="Search everywhere (Cmd+K)" class="w-full bg-slate-200 border border-slate-300 rounded-lg py-2 pl-10 pr-4 text-sm text-slate-700 placeholder:text-slate-400 cursor-pointer focus:outline-none focus:ring-2 focus:ring-sky-500 focus:bg-white transition" readonly />
+        </div>
+      </div>
       <div class="flex items-center space-x-4">
+        <NotificationCenter v-if="authStore.user" />
         <button @click="authStore.showProfileModal = true" class="text-sm font-medium text-slate-500 hover:text-sky-600 transition flex items-center space-x-2" v-if="authStore.user">
           <div class="w-8 h-8 rounded-full bg-sky-500/20 text-sky-300 flex items-center justify-center font-bold text-xs uppercase border border-sky-500/30">
             {{ (authStore.user.full_name || authStore.user.username).substring(0, 2) }}
@@ -192,9 +213,14 @@ const isOverdue = (endDate) => {
                 <svg :class="['w-4 h-4 mr-2 transition-transform duration-200 text-slate-400', expandedWorkspaces.has(ws.id) ? 'rotate-90' : '']" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7"></path></svg>
                 {{ ws.name }}
               </div>
-              <button @click.stop="openProjectModal(ws.id)" class="text-slate-400 hover:text-sky-500 opacity-0 group-hover:opacity-100 transition p-1 rounded hover:bg-slate-200" title="Add Project">
-                <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4"></path></svg>
-              </button>
+              <div class="flex items-center opacity-0 group-hover:opacity-100 transition">
+                <button @click.stop="openMembersModal(ws.id)" class="text-slate-400 hover:text-indigo-500 p-1 rounded hover:bg-slate-200" title="Members">
+                  <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4.354a4 4 0 110 5.292M15 21H3v-1a6 6 0 0112 0v1zm0 0h6v-1a6 6 0 00-9-5.197M13 7a4 4 0 11-8 0 4 4 0 018 0z"></path></svg>
+                </button>
+                <button @click.stop="openProjectModal(ws.id)" class="text-slate-400 hover:text-sky-500 p-1 rounded hover:bg-slate-200" title="Add Project">
+                  <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4"></path></svg>
+                </button>
+              </div>
             </div>
             
             <div v-if="expandedWorkspaces.has(ws.id)" class="ml-6 mt-1 space-y-1 border-l border-slate-300 pl-2">
@@ -317,6 +343,13 @@ const isOverdue = (endDate) => {
         </div>
       </div>
     </div>
+
+    <!-- Members Modal -->
+    <WorkspaceSettingsModal 
+      :is-open="showMembersModal" 
+      :workspace-id="selectedMembersWorkspaceId" 
+      @close="showMembersModal = false" 
+    />
 
   </div>
 </template>

@@ -1,4 +1,4 @@
-from sqlalchemy import Column, Integer, String, Boolean, ForeignKey, DateTime, Text, Float
+from sqlalchemy import Column, Integer, String, Boolean, ForeignKey, DateTime, Text, Float, JSON
 from sqlalchemy.orm import relationship
 from datetime import datetime
 from .database import Base
@@ -148,3 +148,59 @@ class TimeLog(Base):
 
     issue = relationship("Issue", back_populates="time_logs")
     user = relationship("User", back_populates="time_logs")
+
+class WorkspaceMember(Base):
+    __tablename__ = "workspace_members"
+    id = Column(Integer, primary_key=True, index=True)
+    workspace_id = Column(Integer, ForeignKey("workspaces.id"))
+    user_id = Column(Integer, ForeignKey("users.id"))
+    role = Column(String(50), default="member") # admin, member, viewer
+    created_at = Column(DateTime, default=datetime.utcnow)
+
+    workspace = relationship("Workspace", backref="members")
+    user = relationship("User")
+
+class ProjectWorkflow(Base):
+    __tablename__ = "project_workflows"
+    id = Column(Integer, primary_key=True, index=True)
+    project_id = Column(Integer, ForeignKey("projects.id"))
+    statuses = Column(JSON, default=list) # e.g. ["New", "In Progress", "Done"]
+    
+    project = relationship("Project", backref="workflow")
+
+class IssueLink(Base):
+    __tablename__ = "issue_links"
+    id = Column(Integer, primary_key=True, index=True)
+    source_id = Column(Integer, ForeignKey("issues.id"))
+    target_id = Column(Integer, ForeignKey("issues.id"))
+    relation_type = Column(String(50)) # e.g. "blocks", "relates_to"
+    
+    source = relationship("Issue", foreign_keys=[source_id], backref="links_out")
+    target = relationship("Issue", foreign_keys=[target_id], backref="links_in")
+
+class ActivityLog(Base):
+    __tablename__ = "activity_logs"
+    id = Column(Integer, primary_key=True, index=True)
+    project_id = Column(Integer, ForeignKey("projects.id"))
+    issue_id = Column(Integer, ForeignKey("issues.id"), nullable=True)
+    user_id = Column(Integer, ForeignKey("users.id"))
+    action = Column(String(100))
+    target_type = Column(String(50)) # Issue, Project, Wiki
+    target_id = Column(Integer)
+    details = Column(Text, nullable=True)
+    created_at = Column(DateTime, default=datetime.utcnow)
+
+    project = relationship("Project")
+    issue = relationship("Issue")
+    user = relationship("User")
+
+class Notification(Base):
+    __tablename__ = "notifications"
+    id = Column(Integer, primary_key=True, index=True)
+    user_id = Column(Integer, ForeignKey("users.id"))
+    message = Column(String(255))
+    is_read = Column(Boolean, default=False)
+    link = Column(String(255), nullable=True)
+    created_at = Column(DateTime, default=datetime.utcnow)
+
+    user = relationship("User")

@@ -2,6 +2,7 @@
 import { onMounted, ref } from 'vue'
 import { useRouter } from 'vue-router'
 import UserProfileModal from './components/UserProfileModal.vue'
+import GlobalSearchModal from './components/GlobalSearchModal.vue'
 
 const router = useRouter()
 const isLoading = ref(true)
@@ -35,6 +36,7 @@ onMounted(async () => {
   <template v-else>
     <RouterView :key="$route.fullPath" />
     <UserProfileModal />
+    <GlobalSearchModal />
   </template>
 </template>
 

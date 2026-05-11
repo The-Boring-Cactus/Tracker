@@ -1,7 +1,7 @@
 from fastapi import FastAPI
 from fastapi.staticfiles import StaticFiles
 from fastapi.middleware.cors import CORSMiddleware
-from .routers import setup, auth, workspaces, projects, project_entities
+from .routers import setup, auth, workspaces, projects, project_entities, search, notifications
 from .database import engine, Base
 
 app = FastAPI(title="Project Tracking API")
@@ -24,6 +24,8 @@ app.include_router(auth.router)
 app.include_router(workspaces.router)
 app.include_router(projects.router)
 app.include_router(project_entities.router)
+app.include_router(search.router)
+app.include_router(notifications.router)
 
 @app.get("/")
 def root():

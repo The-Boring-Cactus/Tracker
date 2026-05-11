@@ -2,6 +2,7 @@
 import { ref, computed, onMounted, watch } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import { useAuthStore } from '../stores/auth'
+import NotificationCenter from '../components/NotificationCenter.vue'
 
 const route = useRoute()
 const router = useRouter()
@@ -14,6 +15,10 @@ const tabData = ref([])
 const isLoading = ref(true)
 const expandedItemId = ref(null)
 const users = ref([])
+
+const openSearch = () => {
+  window.dispatchEvent(new CustomEvent('open-search'))
+}
 
 // Sidebar state
 const isSidebarOpen = ref(true)
@@ -29,6 +34,16 @@ const filters = ref({ subject: '', assigned: '', status: '', startDate: '', dueD
 const currentPage = ref(1)
 const rowsPerPage = ref(10)
 
+	// Drag-and-drop state
+	const draggedIssueId = ref(null)
+	const dragOverStatus = ref(null)
+	const dragEnterCount = ref(0)
+	
+	const isDragging = ref(false)
+	const draggedItem = ref(null)
+	const dragMouseX = ref(0)
+	const dragMouseY = ref(0)
+
 const tabs = [
   { id: 'issues', name: 'Issues' },
   { id: 'board', name: 'Board' },
@@ -38,7 +53,7 @@ const tabs = [
 ]
 
 const categories = ['TODO', 'WORK', 'ISSUE', 'TASK']
-const statuses = ['New', 'On Process', 'Close', 'Rejected']
+const statuses = ref(['New', 'On Process', 'Close', 'Rejected'])
 
 // Modal States
 const showCreateModal = ref(false)
@@ -51,7 +66,8 @@ const newIssue = ref({
   description: '',
   start_date: '',
   end_date: '',
-  estimated_hours: ''
+  estimated_hours: '',
+  send_email: false
 })
 const newTag = ref('')
 
@@ -131,6 +147,7 @@ onMounted(async () => {
   try {
     await fetchUsers()
     await fetchProject()
+    await fetchWorkflow()
     await loadTab(activeTab.value)
     await fetchWorkspaces()
   } finally {
@@ -155,6 +172,18 @@ const fetchProject = async () => {
     project.value = await response.json()
   } else {
     router.push('/')
+  }
+}
+
+const fetchWorkflow = async () => {
+  const response = await fetch(`http://127.0.0.1:8000/projects/${projectId}/workflow`, {
+    headers: { 'Authorization': `Bearer ${authStore.token}` }
+  })
+  if (response.ok) {
+    const workflow = await response.json()
+    if (workflow && workflow.statuses && workflow.statuses.length > 0) {
+      statuses.value = workflow.statuses
+    }
   }
 }
 
@@ -260,20 +289,77 @@ const getIssuesByStatus = (status) => {
 }
 
 const onDragStart = (event, issue) => {
+  draggedIssueId.value = issue.id
   event.dataTransfer.effectAllowed = 'move'
   event.dataTransfer.setData('issueId', issue.id)
+
+  const el = event.target.closest('[draggable]')
+  if (!el) return
+
+  isDragging.value = true
+  draggedItem.value = issue
+  dragMouseX.value = event.clientX
+  dragMouseY.value = event.clientY
+
+  // Use empty image to hide native ghost
+  const emptyImage = new Image()
+  emptyImage.src = 'data:image/gif;base64,R0lGODlhAQABAIAAAAAAAP///yH5BAEAAAAALAAAAAABAAEAAAIBRAA7'
+  event.dataTransfer.setDragImage(emptyImage, 0, 0)
+
+  // Dim the source element
+  setTimeout(() => {
+    if (el) el.classList.add('opacity-40', 'scale-95')
+  }, 0)
+}
+
+const onDrag = (event) => {
+  if (event.clientX === 0 && event.clientY === 0) return
+  dragMouseX.value = event.clientX
+  dragMouseY.value = event.clientY
+}
+
+const onDragEnd = (event) => {
+  dragEnterCount.value = 0
+  dragOverStatus.value = null
+  isDragging.value = false
+  draggedItem.value = null
+  
+  // Find the source element — event.target may be a child, so search the board
+  const el = document.querySelector(`[draggable].opacity-40`)
+  if (el) {
+    el.classList.remove('opacity-40', 'scale-95')
+  }
+  draggedIssueId.value = null
+}
+
+const onDragEnter = (event, status) => {
+  event.preventDefault()
+  dragEnterCount.value++
+  dragOverStatus.value = status
+}
+
+const onDragLeave = (event) => {
+  dragEnterCount.value--
+  if (dragEnterCount.value <= 0) {
+    dragEnterCount.value = 0
+    dragOverStatus.value = null
+  }
 }
 
 const onDrop = async (event, newStatus) => {
+  event.preventDefault()
+  dragEnterCount.value = 0
+  dragOverStatus.value = null
+
   const issueId = event.dataTransfer.getData('issueId')
   if (!issueId) return
-  
+
   const issue = tabData.value.find(i => i.id == issueId)
   if (issue && issue.status !== newStatus) {
     issue.status = newStatus
     await fetch(`http://127.0.0.1:8000/projects/${projectId}/issues/${issueId}/status`, {
       method: 'PATCH',
-      headers: { 
+      headers: {
         'Authorization': `Bearer ${authStore.token}`,
         'Content-Type': 'application/json'
       },
@@ -284,7 +370,7 @@ const onDrop = async (event, newStatus) => {
 
 const triggerCreate = () => {
   if (activeTab.value === 'issues' || activeTab.value === 'board' || activeTab.value === 'gantt') {
-    newIssue.value = { title: '', category: 'ISSUE', assignee_id: '', parent_id: '', tags: [], description: '', start_date: '', end_date: '', estimated_hours: '' }
+    newIssue.value = { title: '', category: 'ISSUE', assignee_id: '', parent_id: '', tags: [], description: '', start_date: '', end_date: '', estimated_hours: '', send_email: false }
     newTag.value = ''
     showCreateModal.value = true
   } else if (activeTab.value === 'wiki') {
@@ -312,7 +398,8 @@ const submitIssue = async () => {
     description: newIssue.value.description,
     category: newIssue.value.category,
     project_id: projectId,
-    tags: newIssue.value.tags.join(',')
+    tags: newIssue.value.tags.join(','),
+    send_email: newIssue.value.send_email
   }
   if (newIssue.value.assignee_id) {
     payload.assignee_id = parseInt(newIssue.value.assignee_id)
@@ -772,10 +859,17 @@ const maxUserHours = computed(() => {
         <button @click="$router.push('/')" class="text-slate-500 hover:text-slate-700 transition" title="Back to Dashboard">
           <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 19l-7-7 7-7"></path></svg>
         </button>
-        <h1 class="text-2xl font-extrabold text-slate-900 tracking-tight" v-if="project">{{ project.name }}</h1>
+        <h1 class="text-2xl font-extrabold text-slate-900 tracking-tight whitespace-nowrap" v-if="project">{{ project.name }}</h1>
         <div v-else class="h-8 w-48 bg-slate-200 animate-pulse rounded"></div>
       </div>
+      <div class="flex-1 max-w-md mx-8 hidden md:block">
+        <div class="relative group cursor-pointer" @click="openSearch">
+          <svg class="w-5 h-5 text-slate-400 absolute left-3 top-1/2 -translate-y-1/2 group-hover:text-sky-500 transition" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"></path></svg>
+          <input type="text" placeholder="Search everywhere (Cmd+K)" class="w-full bg-slate-200 border border-slate-300 rounded-full py-2 pl-10 pr-4 text-sm text-slate-700 placeholder:text-slate-400 cursor-pointer focus:outline-none focus:ring-2 focus:ring-sky-500 focus:bg-white transition" readonly />
+        </div>
+      </div>
       <div class="flex items-center space-x-4">
+        <NotificationCenter v-if="authStore.user" />
         <button @click="authStore.showProfileModal = true" class="text-sm font-medium text-slate-500 hover:text-sky-600 transition flex items-center space-x-2" v-if="authStore.user">
           <div class="w-8 h-8 rounded-full bg-sky-500/20 text-sky-300 flex items-center justify-center font-bold text-xs uppercase border border-sky-500/30">
             {{ (authStore.user.full_name || authStore.user.username).substring(0, 2) }}
@@ -863,7 +957,10 @@ const maxUserHours = computed(() => {
         <div v-for="status in statuses" :key="status" 
              class="w-80 flex-shrink-0 bg-slate-200/70 rounded-xl p-4 flex flex-col max-h-full border border-slate-300 shadow-inner"
              @dragover.prevent
-             @drop="onDrop($event, status)">
+             @dragenter="onDragEnter($event, status)"
+             @dragleave="onDragLeave"
+             @drop.prevent="onDrop($event, status)"
+             :class="{ 'ring-2 ring-sky-400 bg-sky-50/50': dragOverStatus === status }">
           
           <div class="flex items-center justify-between mb-4 px-1">
             <h3 class="text-xs font-bold text-slate-500 uppercase tracking-wider flex items-center">
@@ -876,6 +973,8 @@ const maxUserHours = computed(() => {
             <div v-for="issue in getIssuesByStatus(status)" :key="issue.id"
                  draggable="true" 
                  @dragstart="onDragStart($event, issue)"
+                 @drag="onDrag"
+                 @dragend="onDragEnd"
                  @click="() => { goToIssueDetails(issue.id); }"
                  class="bg-slate-100 p-4 rounded-xl shadow-sm border border-slate-400 cursor-grab active:cursor-grabbing hover:border-sky-400 hover:shadow-md transition group flex flex-col min-h-[120px]">
               
@@ -1260,6 +1359,43 @@ const maxUserHours = computed(() => {
       </main>
     </div>
 
+    <!-- Drag Mockup -->
+    <div v-if="isDragging && draggedItem" 
+         class="fixed pointer-events-none z-[9999] opacity-90 rotate-2 scale-105 bg-slate-100 p-4 rounded-xl shadow-2xl border border-sky-400 w-80 flex flex-col min-h-[120px]"
+         :style="{ left: dragMouseX + 'px', top: dragMouseY + 'px', transform: 'translate(-50%, -50%) rotate(2deg) scale(1.02)' }">
+      <div class="flex items-center space-x-2 mb-3">
+         <span :class="[
+           'px-2 py-0.5 rounded text-[10px] font-bold uppercase tracking-wide border',
+           draggedItem.status === 'New' ? 'bg-sky-50 text-sky-700 border-sky-100' : 
+           draggedItem.status === 'On Process' ? 'bg-amber-50 text-amber-700 border-amber-100' :
+           draggedItem.status === 'Close' ? 'bg-emerald-50 text-emerald-700 border-emerald-100' :
+           'bg-red-50 text-red-700 border-red-100'
+         ]">{{ draggedItem.status }}</span>
+         <span class="px-2 py-0.5 rounded text-[10px] font-bold bg-slate-100 text-slate-600 tracking-wide border border-slate-300 uppercase">{{ draggedItem.category }}</span>
+      </div>
+      <div class="grid grid-cols-[auto_1fr] gap-x-3 items-center mb-2 border-b border-slate-300 pb-2">
+         <span class="text-xs font-semibold text-slate-500 w-12 shrink-0">#{{ draggedItem.id }}</span>
+         <span class="text-xs font-medium text-slate-600 truncate">Task ID</span>
+      </div>
+      <div class="grid grid-cols-[auto_1fr] gap-x-3 items-center mb-2 border-b border-slate-300 pb-2">
+         <span class="text-xs font-semibold text-slate-500 w-12 shrink-0">
+            <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4.354a4 4 0 110 5.292M15 21H3v-1a6 6 0 0112 0v1zm0 0h6v-1a6 6 0 00-9-5.197M13 7a4 4 0 11-8 0 4 4 0 018 0z"></path></svg>
+         </span>
+         <div class="flex items-center">
+           <div v-if="draggedItem.assignee_id" class="w-6 h-6 rounded-full bg-sky-500/20 text-sky-300 flex items-center justify-center font-bold text-[10px] uppercase shadow-sm border border-sky-200 mr-1">
+              {{ getInitials(users.find(u => u.id === draggedItem.assignee_id)?.username) }}
+           </div>
+           <div v-else class="w-6 h-6 rounded-full bg-slate-100 flex items-center justify-center text-slate-500 font-bold text-[10px] border border-slate-400 shadow-sm mr-1">--</div>
+         </div>
+      </div>
+      <div class="mt-auto bg-slate-200 rounded-lg p-3 flex flex-col justify-between items-start border border-slate-300">
+        <h4 class="font-bold text-slate-800 text-sm mb-2 w-full">{{ draggedItem.title }}</h4>
+        <div class="w-full flex justify-end">
+           <span class="text-xs font-bold text-slate-800 bg-slate-300 px-2 py-0.5 rounded shadow-sm border border-slate-400">{{ draggedItem.estimated_hours ? `${draggedItem.estimated_hours}h` : '--' }}</span>
+        </div>
+      </div>
+    </div>
+
     <!-- Project Modal -->
     <div v-if="showProjectModal" class="fixed inset-0 bg-black/60 flex items-center justify-center z-50 p-4 backdrop-blur-sm">
       <div class="bg-slate-100 rounded-xl shadow-2xl w-full max-w-md flex flex-col">
@@ -1368,6 +1504,11 @@ const maxUserHours = computed(() => {
                </div>
                <QuillEditor ref="issueQuillRef" theme="snow" v-model:content="newIssue.description" contentType="html" toolbar="full" :options="editorOptions" class="h-64" @ready="onIssueEditorReady" />
             </div>
+          </div>
+          
+          <div class="flex items-center space-x-2 pt-4">
+            <input type="checkbox" id="sendEmailCreate" v-model="newIssue.send_email" class="w-4 h-4 text-sky-600 border-slate-300 rounded focus:ring-sky-500 bg-slate-200" />
+            <label for="sendEmailCreate" class="text-sm font-medium text-slate-700">Send email notification to assignee</label>
           </div>
         </div>
         

@@ -4,15 +4,19 @@ import shutil
 import uuid
 from sqlalchemy.orm import Session
 from typing import List, Optional
+import re
 from ..database import get_db
-from ..models import Project, Issue, Board, Component, Version, WikiPage, User, Attachment, Comment, TimeLog
+from ..models import Project, Issue, Board, Component, Version, WikiPage, User, Attachment, Comment, TimeLog, IssueLink, ProjectWorkflow, ActivityLog, Notification
 from ..schemas.project_entities import (
     IssueCreate, Issue as IssueSchema,
     AttachmentSchema, CommentCreate, CommentSchema,
     BoardCreate, Board as BoardSchema,
     ComponentCreate, Component as ComponentSchema,
     VersionCreate, Version as VersionSchema,
-    WikiPageCreate, WikiPage as WikiPageSchema
+    WikiPageCreate, WikiPage as WikiPageSchema,
+    IssueLinkCreate, IssueLink as IssueLinkSchema,
+    ProjectWorkflowCreate, ProjectWorkflow as ProjectWorkflowSchema,
+    ActivityLog as ActivityLogSchema
 )
 from .auth import get_current_user
 from ..email_service import notify_issue_update
@@ -42,6 +46,17 @@ def create_issue(project_id: int, issue: IssueCreate, db: Session = Depends(get_
     db.commit()
     db.refresh(db_issue)
     
+    db_activity = ActivityLog(
+        project_id=project_id,
+        issue_id=db_issue.id,
+        user_id=current_user.id,
+        action="Created issue",
+        target_type="Issue",
+        target_id=db_issue.id
+    )
+    db.add(db_activity)
+    db.commit()
+    
     if getattr(issue, 'send_email', False):
         recipients = [current_user.email]
         if issue.assignee_id:
@@ -54,6 +69,15 @@ def create_issue(project_id: int, issue: IssueCreate, db: Session = Depends(get_
             details=f"A new issue was created by {current_user.username}.",
             recipient_emails=recipients
         )
+        
+    # Parse mentions
+    if issue.description:
+        mentions = re.findall(r'@(\w+)', issue.description)
+        for username in set(mentions):
+            u = db.query(User).filter(User.username == username).first()
+            if u:
+                db.add(Notification(user_id=u.id, message=f"{current_user.username} mentioned you in issue #{db_issue.id}", link=f"/project/{project_id}/issue/{db_issue.id}"))
+        db.commit()
         
     return db_issue
 
@@ -72,6 +96,17 @@ def update_issue_status(project_id: int, issue_id: int, status_update: StatusUpd
     issue.status = status_update.status
     db.commit()
     db.refresh(issue)
+    
+    db_activity = ActivityLog(
+        project_id=project_id,
+        issue_id=issue.id,
+        user_id=current_user.id,
+        action=f"Changed status from {old_status} to {status_update.status}",
+        target_type="Issue",
+        target_id=issue.id
+    )
+    db.add(db_activity)
+    db.commit()
     
     if status_update.send_email:
         recipients = []
@@ -191,6 +226,15 @@ def create_comment(project_id: int, issue_id: int, comment: CommentCreate, db: S
     db.add(db_comment)
     db.commit()
     db.refresh(db_comment)
+    
+    # Parse mentions
+    mentions = re.findall(r'@(\w+)', comment.content)
+    for username in set(mentions):
+        u = db.query(User).filter(User.username == username).first()
+        if u:
+            db.add(Notification(user_id=u.id, message=f"{current_user.username} mentioned you in a comment on issue #{issue_id}", link=f"/project/{project_id}/issue/{issue_id}"))
+    db.commit()
+    
     return db_comment
 
 @router.post("/{project_id}/issues/{issue_id}/attachments", response_model=AttachmentSchema)
@@ -286,3 +330,59 @@ def create_wiki(project_id: int, wiki: WikiPageCreate, db: Session = Depends(get
     db.commit()
     db.refresh(db_wiki)
     return db_wiki
+
+# --- Issue Links ---
+@router.get("/{project_id}/issues/{issue_id}/links", response_model=List[IssueLinkSchema])
+def get_issue_links(project_id: int, issue_id: int, db: Session = Depends(get_db), current_user: User = Depends(get_current_user)):
+    from sqlalchemy import or_
+    return db.query(IssueLink).filter(or_(IssueLink.source_id == issue_id, IssueLink.target_id == issue_id)).all()
+
+@router.post("/{project_id}/issues/{issue_id}/links", response_model=IssueLinkSchema)
+def create_issue_link(project_id: int, issue_id: int, link: IssueLinkCreate, db: Session = Depends(get_db), current_user: User = Depends(get_current_user)):
+    db_link = IssueLink(**link.model_dump())
+    db.add(db_link)
+    db.commit()
+    db.refresh(db_link)
+    
+    db_activity = ActivityLog(
+        project_id=project_id,
+        issue_id=issue_id,
+        user_id=current_user.id,
+        action=f"Linked issue to #{link.target_id} ({link.relation_type})",
+        target_type="IssueLink",
+        target_id=db_link.id
+    )
+    db.add(db_activity)
+    db.commit()
+    return db_link
+
+# --- Project Workflows ---
+@router.get("/{project_id}/workflow", response_model=ProjectWorkflowSchema)
+def get_project_workflow(project_id: int, db: Session = Depends(get_db), current_user: User = Depends(get_current_user)):
+    workflow = db.query(ProjectWorkflow).filter(ProjectWorkflow.project_id == project_id).first()
+    if not workflow:
+        raise HTTPException(status_code=404, detail="Workflow not found")
+    return workflow
+
+@router.post("/{project_id}/workflow", response_model=ProjectWorkflowSchema)
+def create_project_workflow(project_id: int, workflow: ProjectWorkflowCreate, db: Session = Depends(get_db), current_user: User = Depends(get_current_user)):
+    if workflow.project_id != project_id:
+        raise HTTPException(status_code=400, detail="Project ID mismatch")
+    
+    existing = db.query(ProjectWorkflow).filter(ProjectWorkflow.project_id == project_id).first()
+    if existing:
+        existing.statuses = workflow.statuses
+        db.commit()
+        db.refresh(existing)
+        return existing
+        
+    db_workflow = ProjectWorkflow(**workflow.model_dump())
+    db.add(db_workflow)
+    db.commit()
+    db.refresh(db_workflow)
+    return db_workflow
+
+# --- Activity Logs ---
+@router.get("/{project_id}/issues/{issue_id}/activity", response_model=List[ActivityLogSchema])
+def get_issue_activity(project_id: int, issue_id: int, db: Session = Depends(get_db), current_user: User = Depends(get_current_user)):
+    return db.query(ActivityLog).filter(ActivityLog.issue_id == issue_id).order_by(ActivityLog.created_at.desc()).all()

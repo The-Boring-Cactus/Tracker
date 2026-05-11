@@ -2,6 +2,7 @@
 import { ref, onMounted, computed } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import { useAuthStore } from '../stores/auth'
+import NotificationCenter from '../components/NotificationCenter.vue'
 
 const route = useRoute()
 const router = useRouter()
@@ -12,10 +13,21 @@ const issueId = route.params.issueId
 
 const issue = ref(null)
 const project = ref(null)
+const projectIssues = ref([])
 const users = ref([])
 const isLoading = ref(true)
+const activityLogs = ref([])
+const issueLinks = ref([])
+
+const newLinkTarget = ref('')
+const newLinkType = ref('blocks')
 
 const commentContent = ref('')
+const sendEmailNotification = ref(false)
+
+const openSearch = () => {
+  window.dispatchEvent(new CustomEvent('open-search'))
+}
 
 const statuses = ['New', 'On Process', 'Close', 'Rejected']
 
@@ -72,11 +84,62 @@ onMounted(async () => {
   try {
     await fetchUsers()
     await fetchProject()
+    await fetchProjectIssues()
     await fetchIssue()
+    await fetchActivity()
+    await fetchLinks()
   } finally {
     isLoading.value = false
   }
 })
+
+const fetchActivity = async () => {
+  const response = await fetch(`http://127.0.0.1:8000/projects/${projectId}/issues/${issueId}/activity`, {
+    headers: { 'Authorization': `Bearer ${authStore.token}` }
+  })
+  if (response.ok) {
+    activityLogs.value = await response.json()
+  }
+}
+
+const fetchLinks = async () => {
+  const response = await fetch(`http://127.0.0.1:8000/projects/${projectId}/issues/${issueId}/links`, {
+    headers: { 'Authorization': `Bearer ${authStore.token}` }
+  })
+  if (response.ok) {
+    issueLinks.value = await response.json()
+  }
+}
+
+const addLink = async () => {
+  if (!newLinkTarget.value) return
+  const response = await fetch(`http://127.0.0.1:8000/projects/${projectId}/issues/${issueId}/links`, {
+    method: 'POST',
+    headers: { 
+      'Authorization': `Bearer ${authStore.token}`,
+      'Content-Type': 'application/json'
+    },
+    body: JSON.stringify({
+      source_id: parseInt(issueId),
+      target_id: parseInt(newLinkTarget.value),
+      relation_type: newLinkType.value
+    })
+  })
+  if (response.ok) {
+    newLinkTarget.value = ''
+    fetchLinks()
+    fetchActivity()
+  }
+}
+
+const fetchProjectIssues = async () => {
+  const response = await fetch(`http://127.0.0.1:8000/projects/${projectId}/issues`, {
+    headers: { 'Authorization': `Bearer ${authStore.token}` }
+  })
+  if (response.ok) {
+    projectIssues.value = await response.json()
+  }
+}
 
 const fetchUsers = async () => {
   const response = await fetch('http://127.0.0.1:8000/auth/users', {
@@ -114,9 +177,12 @@ const updateStatus = async (newStatus) => {
       'Authorization': `Bearer ${authStore.token}`,
       'Content-Type': 'application/json'
     },
-    body: JSON.stringify({ status: newStatus })
+    body: JSON.stringify({ status: newStatus, send_email: sendEmailNotification.value })
   })
-  if (response.ok) fetchIssue()
+  if (response.ok) {
+    fetchIssue()
+    fetchActivity()
+  }
 }
 
 const updateAssignee = async (newAssignee) => {
@@ -127,9 +193,12 @@ const updateAssignee = async (newAssignee) => {
       'Authorization': `Bearer ${authStore.token}`,
       'Content-Type': 'application/json'
     },
-    body: JSON.stringify({ assignee_id: assigneeId })
+    body: JSON.stringify({ assignee_id: assigneeId, send_email: sendEmailNotification.value })
   })
-  if (response.ok) fetchIssue()
+  if (response.ok) {
+    fetchIssue()
+    fetchActivity()
+  }
 }
 
 const addComment = async () => {
@@ -144,6 +213,9 @@ const addComment = async () => {
   })
   if (response.ok) {
     commentContent.value = ''
+    if (commentQuill.value) {
+      commentQuill.value.setText('')
+    }
     fetchIssue()
   }
 }
@@ -217,11 +289,18 @@ const isOverdue = (endDate) => {
       <div class="flex items-center space-x-4">
         <button @click="goBack" class="text-slate-500 hover:text-sky-400 transition flex items-center space-x-1 font-medium bg-slate-100 hover:bg-sky-500/20 px-3 py-1.5 rounded-lg border border-slate-300 hover:border-sky-400">
           <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 19l-7-7 7-7"></path></svg>
-          <span>Back to Project</span>
+          <span class="whitespace-nowrap">Back to Project</span>
         </button>
-        <h1 class="text-2xl font-extrabold text-slate-900 tracking-tight" v-if="project">{{ project.name }} / Issue #{{ issueId }}</h1>
+        <h1 class="text-2xl font-extrabold text-slate-900 tracking-tight whitespace-nowrap" v-if="project">{{ project.name }} / Issue #{{ issueId }}</h1>
+      </div>
+      <div class="flex-1 max-w-md mx-8 hidden md:block">
+        <div class="relative group cursor-pointer" @click="openSearch">
+          <svg class="w-5 h-5 text-slate-400 absolute left-3 top-1/2 -translate-y-1/2 group-hover:text-sky-500 transition" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"></path></svg>
+          <input type="text" placeholder="Search everywhere (Cmd+K)" class="w-full bg-slate-200 border border-slate-300 rounded-full py-2 pl-10 pr-4 text-sm text-slate-700 placeholder:text-slate-400 cursor-pointer focus:outline-none focus:ring-2 focus:ring-sky-500 focus:bg-white transition" readonly />
+        </div>
       </div>
       <div class="flex items-center space-x-4">
+        <NotificationCenter v-if="authStore.user" />
         <button @click="authStore.showProfileModal = true" class="text-sm font-medium text-slate-500 hover:text-sky-400 transition flex items-center space-x-2" v-if="authStore.user">
           <div class="w-8 h-8 rounded-full bg-sky-500/20 text-sky-300 flex items-center justify-center font-bold text-xs uppercase border border-sky-500/30">
             {{ (authStore.user.full_name || authStore.user.username).substring(0, 2) }}
@@ -334,6 +413,22 @@ const isOverdue = (endDate) => {
             </div>
           </div>
         </div>
+        
+        <!-- Activity History -->
+        <div class="bg-slate-100 p-8 rounded-2xl shadow-sm border border-slate-300">
+          <h3 class="text-sm font-bold text-slate-500 uppercase tracking-wider mb-6 border-b border-slate-300 pb-2">Activity History</h3>
+          <div class="space-y-4 max-h-[300px] overflow-y-auto pr-2">
+            <div v-for="log in activityLogs" :key="log.id" class="flex items-start space-x-3 text-sm">
+              <div class="w-2 h-2 mt-1.5 rounded-full bg-slate-400"></div>
+              <div class="flex-1">
+                <span class="font-bold text-slate-800">{{ users.find(u => u.id === log.user_id)?.username || 'User' }}</span>
+                <span class="text-slate-600 ml-1">{{ log.action }}</span>
+                <div class="text-xs text-slate-400 mt-0.5">{{ new Date(log.created_at).toLocaleString() }}</div>
+              </div>
+            </div>
+            <div v-if="activityLogs.length === 0" class="text-slate-500 italic text-sm">No recent activity.</div>
+          </div>
+        </div>
 
       </div>
 
@@ -386,6 +481,42 @@ const isOverdue = (endDate) => {
               <span class="block text-xs font-bold text-slate-500 uppercase tracking-wider mb-1">Estimated Time</span>
               <span class="text-sm font-medium text-slate-700">{{ issue.estimated_hours ? `${issue.estimated_hours}h` : 'None' }}</span>
             </div>
+          </div>
+
+          <div class="mt-4 flex items-center space-x-2 bg-slate-200 p-2 rounded border border-slate-300">
+            <input type="checkbox" id="sendEmailIssue" v-model="sendEmailNotification" class="w-4 h-4 text-sky-600 border-slate-400 rounded focus:ring-sky-500 bg-white" />
+            <label for="sendEmailIssue" class="text-xs font-medium text-slate-700">Send email notification to assignee</label>
+          </div>
+        </div>
+
+        <div class="bg-slate-100 p-6 rounded-2xl shadow-sm border border-slate-300 space-y-4">
+          <h3 class="text-sm font-bold text-slate-800 border-b border-slate-300 pb-2">Issue Dependencies</h3>
+          
+          <div v-if="issueLinks.length > 0" class="space-y-2">
+            <div v-for="link in issueLinks" :key="link.id" class="flex items-center justify-between text-sm bg-slate-200 p-2 rounded border border-slate-300">
+              <div>
+                <span class="font-semibold text-slate-700 capitalize">{{ link.relation_type }}: </span>
+                <router-link :to="`/project/${projectId}/issue/${link.source_id === issue.id ? link.target_id : link.source_id}`" class="text-sky-600 hover:underline">
+                  #{{ link.source_id === issue.id ? link.target_id : link.source_id }}
+                </router-link>
+              </div>
+            </div>
+          </div>
+          <div v-else class="text-xs text-slate-500 italic">No linked issues.</div>
+
+          <div class="pt-2 border-t border-slate-200">
+            <div class="flex space-x-2">
+              <select v-model="newLinkType" class="bg-slate-200 border border-slate-400 rounded p-1 text-xs text-slate-700 focus:outline-none focus:ring-1 focus:ring-sky-500">
+                <option value="blocks">Blocks</option>
+                <option value="is_blocked_by">Is blocked by</option>
+                <option value="relates_to">Relates to</option>
+              </select>
+              <select v-model="newLinkTarget" class="flex-1 bg-slate-200 border border-slate-400 rounded p-1 text-xs text-slate-700 focus:outline-none focus:ring-1 focus:ring-sky-500">
+                <option value="" disabled>Select issue</option>
+                <option v-for="pi in projectIssues" :key="pi.id" :value="pi.id" :disabled="pi.id == issue.id">#{{ pi.id }} - {{ pi.title }}</option>
+              </select>
+            </div>
+            <button @click="addLink" :disabled="!newLinkTarget" class="mt-2 w-full py-1.5 bg-slate-300 hover:bg-slate-400 disabled:opacity-50 text-slate-800 rounded text-xs font-bold transition">Add Link</button>
           </div>
         </div>
 

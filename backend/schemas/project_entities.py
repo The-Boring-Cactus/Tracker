@@ -131,3 +131,85 @@ class WikiPage(WikiPageBase):
 
     class Config:
         from_attributes = True
+
+# Workspace Member Schemas
+class WorkspaceMemberBase(BaseModel):
+    user_id: int
+    workspace_id: int
+    role: str = "member"
+
+class WorkspaceMemberCreate(WorkspaceMemberBase):
+    pass
+
+class WorkspaceMember(WorkspaceMemberBase):
+    id: int
+    created_at: datetime
+
+    class Config:
+        from_attributes = True
+
+# Project Workflow Schemas
+class ProjectWorkflowBase(BaseModel):
+    project_id: int
+    statuses: List[str]
+
+class ProjectWorkflowCreate(ProjectWorkflowBase):
+    pass
+
+class ProjectWorkflow(ProjectWorkflowBase):
+    id: int
+
+    class Config:
+        from_attributes = True
+
+# Issue Link Schemas
+class IssueLinkBase(BaseModel):
+    source_id: int
+    target_id: int
+    relation_type: str
+
+class IssueLinkCreate(IssueLinkBase):
+    pass
+
+class IssueLink(IssueLinkBase):
+    id: int
+
+    class Config:
+        from_attributes = True
+
+# Activity Log Schemas
+class ActivityLogBase(BaseModel):
+    project_id: int
+    issue_id: Optional[int] = None
+    user_id: int
+    action: str
+    target_type: str
+    target_id: int
+    details: Optional[str] = None
+
+class ActivityLogCreate(ActivityLogBase):
+    pass
+
+class ActivityLog(ActivityLogBase):
+    id: int
+    created_at: datetime
+
+    class Config:
+        from_attributes = True
+
+# Notification Schemas
+class NotificationBase(BaseModel):
+    user_id: int
+    message: str
+    is_read: bool = False
+    link: Optional[str] = None
+
+class NotificationCreate(NotificationBase):
+    pass
+
+class Notification(NotificationBase):
+    id: int
+    created_at: datetime
+
+    class Config:
+        from_attributes = True
