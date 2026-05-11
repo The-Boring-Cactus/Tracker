@@ -89,10 +89,10 @@ const submitSetup = async () => {
 <template>
   <div class="min-h-screen bg-slate-50 flex items-center justify-center p-6 relative overflow-hidden text-slate-800">
     <!-- Decorative background elements -->
-    <div class="absolute top-[-10%] left-[-10%] w-96 h-96 bg-sky-300 rounded-full mix-blend-multiply filter blur-[128px] opacity-60 animate-blob"></div>
-    <div class="absolute bottom-[-10%] right-[-10%] w-96 h-96 bg-indigo-300 rounded-full mix-blend-multiply filter blur-[128px] opacity-60 animate-blob animation-delay-2000"></div>
+    <div class="absolute top-[-10%] left-[-10%] w-96 h-96 bg-sky-500/30 rounded-full mix-blend-screen filter blur-[128px] opacity-60 animate-blob"></div>
+    <div class="absolute bottom-[-10%] right-[-10%] w-96 h-96 bg-indigo-500/30 rounded-full mix-blend-screen filter blur-[128px] opacity-60 animate-blob animation-delay-2000"></div>
 
-    <div class="glass-panel w-full max-w-2xl rounded-2xl p-8 md:p-10 z-10 relative shadow-xl border border-white/50">
+    <div class="glass-panel w-full max-w-2xl rounded-2xl p-8 md:p-10 z-10 relative shadow-xl border border-slate-300/50">
       <div class="text-center mb-10">
         <h1 class="text-3xl font-extrabold tracking-tight mb-2">Workspace <span class="primary-gradient-text">Setup</span></h1>
         <p class="text-slate-500">Complete the initial configuration to get started.</p>
@@ -105,11 +105,11 @@ const submitSetup = async () => {
           <div class="absolute left-0 top-1/2 -translate-y-1/2 h-1 bg-sky-500 z-0 rounded transition-all duration-500 ease-out" :style="{ width: ((currentStep - 1) / (totalSteps - 1)) * 100 + '%' }"></div>
           
           <div v-for="step in totalSteps" :key="step" class="z-10 flex flex-col items-center">
-            <div :class="['w-10 h-10 rounded-full flex items-center justify-center font-bold text-sm transition-all duration-500 ease-out', currentStep >= step ? 'bg-sky-500 text-white shadow-lg shadow-sky-500/30' : 'bg-white border-2 border-slate-200 text-slate-400']">
+            <div :class="['w-10 h-10 rounded-full flex items-center justify-center font-bold text-sm transition-all duration-500 ease-out', currentStep >= step ? 'bg-sky-500 text-white shadow-lg shadow-sky-500/30' : 'bg-slate-100 border-2 border-slate-400 text-slate-500']">
               <svg v-if="currentStep > step" class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"></path></svg>
               <span v-else>{{ step }}</span>
             </div>
-            <span :class="['absolute -bottom-6 text-xs font-semibold whitespace-nowrap transition-colors duration-300', currentStep >= step ? 'text-slate-700' : 'text-slate-400']">
+            <span :class="['absolute -bottom-6 text-xs font-semibold whitespace-nowrap transition-colors duration-300', currentStep >= step ? 'text-slate-800' : 'text-slate-500']">
               {{ step === 1 ? 'Database' : step === 2 ? 'Admin' : 'SMTP' }}
             </span>
           </div>
@@ -133,7 +133,7 @@ const submitSetup = async () => {
             
             <div>
               <label class="block text-sm font-medium text-slate-700 mb-1">Database Type</label>
-              <select v-model="form.db_type" @change="onDbTypeChange" class="w-full bg-white border border-slate-300 rounded-lg py-2.5 px-3 text-slate-900 focus:outline-none focus:ring-2 focus:ring-sky-500 transition-all">
+              <select v-model="form.db_type" @change="onDbTypeChange" class="w-full bg-slate-200 border border-slate-400 rounded-lg py-2.5 px-3 text-slate-900 placeholder:text-slate-500 focus:outline-none focus:ring-2 focus:ring-sky-500 transition-all">
                 <option v-for="db in dbOptions" :key="db.value" :value="db.value">{{ db.label }}</option>
               </select>
             </div>
@@ -141,27 +141,27 @@ const submitSetup = async () => {
             <div class="grid grid-cols-3 gap-4">
               <div class="col-span-2">
                 <label class="block text-sm font-medium text-slate-700 mb-1">Host</label>
-                <input type="text" v-model="form.host" required class="w-full bg-white border border-slate-300 rounded-lg py-2.5 px-3 text-slate-900 focus:outline-none focus:ring-2 focus:ring-sky-500 transition-all" />
+                <input type="text" v-model="form.host" required class="w-full bg-slate-200 border border-slate-400 rounded-lg py-2.5 px-3 text-slate-900 placeholder:text-slate-500 focus:outline-none focus:ring-2 focus:ring-sky-500 transition-all" />
               </div>
               <div>
                 <label class="block text-sm font-medium text-slate-700 mb-1">Port</label>
-                <input type="number" v-model="form.port" required class="w-full bg-white border border-slate-300 rounded-lg py-2.5 px-3 text-slate-900 focus:outline-none focus:ring-2 focus:ring-sky-500 transition-all" />
+                <input type="number" v-model="form.port" required class="w-full bg-slate-200 border border-slate-400 rounded-lg py-2.5 px-3 text-slate-900 placeholder:text-slate-500 focus:outline-none focus:ring-2 focus:ring-sky-500 transition-all" />
               </div>
             </div>
 
             <div>
               <label class="block text-sm font-medium text-slate-700 mb-1">Database Name</label>
-              <input type="text" v-model="form.db_name" required class="w-full bg-white border border-slate-300 rounded-lg py-2.5 px-3 text-slate-900 focus:outline-none focus:ring-2 focus:ring-sky-500 transition-all" />
+              <input type="text" v-model="form.db_name" required class="w-full bg-slate-200 border border-slate-400 rounded-lg py-2.5 px-3 text-slate-900 placeholder:text-slate-500 focus:outline-none focus:ring-2 focus:ring-sky-500 transition-all" />
             </div>
 
             <div class="grid grid-cols-2 gap-4">
               <div>
                 <label class="block text-sm font-medium text-slate-700 mb-1">DB User</label>
-                <input type="text" v-model="form.user" required class="w-full bg-white border border-slate-300 rounded-lg py-2.5 px-3 text-slate-900 focus:outline-none focus:ring-2 focus:ring-sky-500 transition-all" />
+                <input type="text" v-model="form.user" required class="w-full bg-slate-200 border border-slate-400 rounded-lg py-2.5 px-3 text-slate-900 placeholder:text-slate-500 focus:outline-none focus:ring-2 focus:ring-sky-500 transition-all" />
               </div>
               <div>
                 <label class="block text-sm font-medium text-slate-700 mb-1">DB Password</label>
-                <input type="password" v-model="form.password" class="w-full bg-white border border-slate-300 rounded-lg py-2.5 px-3 text-slate-900 focus:outline-none focus:ring-2 focus:ring-sky-500 transition-all" />
+                <input type="password" v-model="form.password" class="w-full bg-slate-200 border border-slate-400 rounded-lg py-2.5 px-3 text-slate-900 placeholder:text-slate-500 focus:outline-none focus:ring-2 focus:ring-sky-500 transition-all" />
               </div>
             </div>
 
@@ -179,22 +179,22 @@ const submitSetup = async () => {
             
             <div>
               <label class="block text-sm font-medium text-slate-700 mb-1">Admin Username</label>
-              <input type="text" v-model="form.admin_username" required class="w-full bg-white border border-slate-300 rounded-lg py-2.5 px-3 text-slate-900 focus:outline-none focus:ring-2 focus:ring-indigo-500 transition-all" />
+              <input type="text" v-model="form.admin_username" required class="w-full bg-slate-200 border border-slate-400 rounded-lg py-2.5 px-3 text-slate-900 placeholder:text-slate-500 focus:outline-none focus:ring-2 focus:ring-indigo-500 transition-all" />
             </div>
 
             <div>
               <label class="block text-sm font-medium text-slate-700 mb-1">Admin Email</label>
-              <input type="email" v-model="form.admin_email" required class="w-full bg-white border border-slate-300 rounded-lg py-2.5 px-3 text-slate-900 focus:outline-none focus:ring-2 focus:ring-indigo-500 transition-all" />
+              <input type="email" v-model="form.admin_email" required class="w-full bg-slate-200 border border-slate-400 rounded-lg py-2.5 px-3 text-slate-900 placeholder:text-slate-500 focus:outline-none focus:ring-2 focus:ring-indigo-500 transition-all" />
             </div>
 
             <div>
               <label class="block text-sm font-medium text-slate-700 mb-1">Admin Password</label>
-              <input type="password" v-model="form.admin_password" required minlength="8" class="w-full bg-white border border-slate-300 rounded-lg py-2.5 px-3 text-slate-900 focus:outline-none focus:ring-2 focus:ring-indigo-500 transition-all" />
+              <input type="password" v-model="form.admin_password" required minlength="8" class="w-full bg-slate-200 border border-slate-400 rounded-lg py-2.5 px-3 text-slate-900 placeholder:text-slate-500 focus:outline-none focus:ring-2 focus:ring-indigo-500 transition-all" />
               <p class="text-xs text-slate-500 mt-1">Must be at least 8 characters long.</p>
             </div>
 
             <div class="pt-6 flex justify-between">
-              <button type="button" @click="prevStep" class="py-2.5 px-6 bg-white border border-slate-300 text-slate-600 hover:bg-slate-50 font-medium rounded-lg transition-all">&larr; Back</button>
+              <button type="button" @click="prevStep" class="py-2.5 px-6 bg-slate-200 border border-slate-400 text-slate-800 hover:bg-slate-300 font-medium rounded-lg transition-all">&larr; Back</button>
               <button type="submit" class="py-2.5 px-8 bg-indigo-600 hover:bg-indigo-500 text-white font-semibold rounded-lg shadow-md hover:shadow-lg transition-all">Next Step &rarr;</button>
             </div>
           </div>
@@ -210,35 +210,35 @@ const submitSetup = async () => {
             <div class="grid grid-cols-3 gap-4">
               <div class="col-span-2">
                 <label class="block text-sm font-medium text-slate-700 mb-1">SMTP Host</label>
-                <input type="text" v-model="form.smtp_host" placeholder="smtp.example.com" class="w-full bg-white border border-slate-300 rounded-lg py-2.5 px-3 text-slate-900 focus:outline-none focus:ring-2 focus:ring-rose-500 transition-all" />
+                <input type="text" v-model="form.smtp_host" placeholder="smtp.example.com" class="w-full bg-slate-200 border border-slate-400 rounded-lg py-2.5 px-3 text-slate-900 placeholder:text-slate-500 focus:outline-none focus:ring-2 focus:ring-rose-500 transition-all" />
               </div>
               <div>
                 <label class="block text-sm font-medium text-slate-700 mb-1">Port</label>
-                <input type="number" v-model="form.smtp_port" class="w-full bg-white border border-slate-300 rounded-lg py-2.5 px-3 text-slate-900 focus:outline-none focus:ring-2 focus:ring-rose-500 transition-all" />
+                <input type="number" v-model="form.smtp_port" class="w-full bg-slate-200 border border-slate-400 rounded-lg py-2.5 px-3 text-slate-900 placeholder:text-slate-500 focus:outline-none focus:ring-2 focus:ring-rose-500 transition-all" />
               </div>
             </div>
 
             <div class="grid grid-cols-2 gap-4">
               <div>
                 <label class="block text-sm font-medium text-slate-700 mb-1">SMTP User</label>
-                <input type="text" v-model="form.smtp_user" class="w-full bg-white border border-slate-300 rounded-lg py-2.5 px-3 text-slate-900 focus:outline-none focus:ring-2 focus:ring-rose-500 transition-all" />
+                <input type="text" v-model="form.smtp_user" class="w-full bg-slate-200 border border-slate-400 rounded-lg py-2.5 px-3 text-slate-900 placeholder:text-slate-500 focus:outline-none focus:ring-2 focus:ring-rose-500 transition-all" />
               </div>
               <div>
                 <label class="block text-sm font-medium text-slate-700 mb-1">SMTP Password</label>
-                <input type="password" v-model="form.smtp_password" class="w-full bg-white border border-slate-300 rounded-lg py-2.5 px-3 text-slate-900 focus:outline-none focus:ring-2 focus:ring-rose-500 transition-all" />
+                <input type="password" v-model="form.smtp_password" class="w-full bg-slate-200 border border-slate-400 rounded-lg py-2.5 px-3 text-slate-900 placeholder:text-slate-500 focus:outline-none focus:ring-2 focus:ring-rose-500 transition-all" />
               </div>
             </div>
 
-            <div class="flex items-center mt-2 bg-slate-50 p-3 rounded-lg border border-slate-100">
-              <input type="checkbox" id="tls" v-model="form.smtp_tls" class="w-4 h-4 text-rose-600 bg-white border-gray-300 rounded focus:ring-rose-500" />
+            <div class="flex items-center mt-2 bg-slate-200 p-3 rounded-lg border border-slate-300">
+              <input type="checkbox" id="tls" v-model="form.smtp_tls" class="w-4 h-4 text-rose-600 bg-slate-200 border-slate-400 rounded focus:ring-rose-500" />
               <label for="tls" class="ml-2 text-sm font-medium text-slate-700">Use TLS/SSL encryption</label>
             </div>
 
-            <div class="pt-6 mt-4 border-t border-slate-100 flex justify-between items-center flex-wrap gap-4">
-              <button type="button" @click="prevStep" class="py-2.5 px-6 bg-white border border-slate-300 text-slate-600 hover:bg-slate-50 font-medium rounded-lg transition-all">&larr; Back</button>
+            <div class="pt-6 mt-4 border-t border-slate-300 flex justify-between items-center flex-wrap gap-4">
+              <button type="button" @click="prevStep" class="py-2.5 px-6 bg-slate-200 border border-slate-400 text-slate-800 hover:bg-slate-300 font-medium rounded-lg transition-all">&larr; Back</button>
               
               <div class="flex space-x-3">
-                 <button type="button" @click="skipSmtpAndSubmit" class="py-2.5 px-5 bg-slate-100 hover:bg-slate-200 text-slate-600 font-medium rounded-lg transition-all">
+                 <button type="button" @click="skipSmtpAndSubmit" class="py-2.5 px-5 bg-slate-200 hover:bg-slate-300 text-slate-800 font-medium rounded-lg transition-all">
                    Skip & Complete
                  </button>
                  <button type="submit" :disabled="isSubmitting" class="py-2.5 px-6 bg-gradient-to-r from-sky-500 to-indigo-600 hover:from-sky-600 hover:to-indigo-700 text-white font-semibold rounded-lg shadow-md hover:shadow-lg transition-all flex items-center disabled:opacity-50">

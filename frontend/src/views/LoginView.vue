@@ -35,7 +35,7 @@ const handleSubmit = async () => {
 
 <template>
   <div class="min-h-screen bg-slate-50 flex items-center justify-center p-6 text-slate-800">
-    <div class="glass-panel p-8 rounded-xl w-full max-w-md shadow-lg border border-slate-200">
+    <div class="glass-panel p-8 rounded-xl w-full max-w-md shadow-lg border border-slate-300">
       <div class="text-center mb-8">
         <h1 class="text-3xl font-extrabold text-slate-900 mb-2">{{ isRegistering ? 'Create Account' : 'Welcome Back' }}</h1>
         <p class="text-slate-500 text-sm">{{ isRegistering ? 'Sign up for a new account' : 'Sign in to your account' }}</p>
@@ -45,22 +45,22 @@ const handleSubmit = async () => {
         
         <div v-if="isRegistering">
           <label class="block text-sm font-medium text-slate-700 mb-1">Full Name</label>
-          <input type="text" v-model="fullName" required class="w-full bg-white border border-slate-300 rounded-lg py-2 px-3 text-slate-900 focus:outline-none focus:ring-2 focus:ring-sky-500 transition-all" />
+          <input type="text" v-model="fullName" required class="w-full bg-slate-200 border border-slate-400 rounded-lg py-2 px-3 text-slate-900 focus:outline-none focus:ring-2 focus:ring-sky-500 transition-all placeholder:text-slate-500" />
         </div>
         
         <div v-if="isRegistering">
           <label class="block text-sm font-medium text-slate-700 mb-1">Email</label>
-          <input type="email" v-model="email" required class="w-full bg-white border border-slate-300 rounded-lg py-2 px-3 text-slate-900 focus:outline-none focus:ring-2 focus:ring-sky-500 transition-all" />
+          <input type="email" v-model="email" required class="w-full bg-slate-200 border border-slate-400 rounded-lg py-2 px-3 text-slate-900 focus:outline-none focus:ring-2 focus:ring-sky-500 transition-all placeholder:text-slate-500" />
         </div>
 
         <div>
           <label class="block text-sm font-medium text-slate-700 mb-1">Username</label>
-          <input type="text" v-model="username" required class="w-full bg-white border border-slate-300 rounded-lg py-2 px-3 text-slate-900 focus:outline-none focus:ring-2 focus:ring-sky-500 transition-all" />
+          <input type="text" v-model="username" required class="w-full bg-slate-200 border border-slate-400 rounded-lg py-2 px-3 text-slate-900 focus:outline-none focus:ring-2 focus:ring-sky-500 transition-all placeholder:text-slate-500" />
         </div>
 
         <div>
           <label class="block text-sm font-medium text-slate-700 mb-1">Password</label>
-          <input type="password" v-model="password" required class="w-full bg-white border border-slate-300 rounded-lg py-2 px-3 text-slate-900 focus:outline-none focus:ring-2 focus:ring-sky-500 transition-all" />
+          <input type="password" v-model="password" required class="w-full bg-slate-200 border border-slate-400 rounded-lg py-2 px-3 text-slate-900 focus:outline-none focus:ring-2 focus:ring-sky-500 transition-all placeholder:text-slate-500" />
         </div>
 
         <div v-if="errorMsg" class="p-3 bg-red-50 border border-red-200 rounded-lg text-red-600 text-sm">

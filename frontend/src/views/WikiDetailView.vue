@@ -71,9 +71,9 @@ const getTags = (tagsStr) => {
 
 <template>
   <div class="min-h-screen bg-slate-50 flex flex-col text-slate-800">
-    <header class="bg-white border-b border-slate-200 px-6 py-4 flex items-center justify-between shadow-sm sticky top-0 z-10">
+    <header class="bg-slate-100 border-b border-slate-300 px-6 py-4 flex items-center justify-between shadow-sm sticky top-0 z-10">
       <div class="flex items-center space-x-4">
-        <button @click="goBack" class="text-slate-500 hover:text-sky-600 transition flex items-center space-x-1 font-medium bg-slate-100 hover:bg-sky-50 px-3 py-1.5 rounded-lg border border-slate-200 hover:border-sky-200">
+        <button @click="goBack" class="text-slate-500 hover:text-sky-600 transition flex items-center space-x-1 font-medium bg-slate-200 hover:bg-sky-500/20 px-3 py-1.5 rounded-lg border border-slate-300 hover:border-sky-300">
           <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 19l-7-7 7-7"></path></svg>
           <span>Back to Project</span>
         </button>
@@ -96,14 +96,14 @@ const getTags = (tagsStr) => {
       <div class="flex-1 space-y-8">
         
         <!-- Header Section -->
-        <div class="bg-white p-8 rounded-2xl shadow-sm border border-slate-200">
+        <div class="bg-slate-100 p-8 rounded-2xl shadow-sm border border-slate-300">
           <div class="flex items-center space-x-3 mb-4">
             <template v-if="getTags(wiki.tags).length > 0">
                <span v-for="tag in getTags(wiki.tags)" :key="tag" class="px-2 py-1 rounded bg-indigo-50 text-indigo-600 border border-indigo-100 text-xs font-semibold">
                  {{ tag }}
                </span>
             </template>
-            <span v-else class="text-xs text-slate-400 font-medium italic">No tags</span>
+            <span v-else class="text-xs text-slate-500 font-medium italic">No tags</span>
           </div>
           <h2 class="text-3xl font-extrabold text-slate-900 mb-2">{{ wiki.title }}</h2>
           <div class="text-sm text-slate-500 flex items-center space-x-4">
@@ -113,8 +113,8 @@ const getTags = (tagsStr) => {
         </div>
 
         <!-- Content -->
-        <div class="bg-white p-8 rounded-2xl shadow-sm border border-slate-200">
-          <h3 class="text-sm font-bold text-slate-400 uppercase tracking-wider mb-4 border-b border-slate-100 pb-2">Content</h3>
+        <div class="bg-slate-100 p-8 rounded-2xl shadow-sm border border-slate-300">
+          <h3 class="text-sm font-bold text-slate-500 uppercase tracking-wider mb-4 border-b border-slate-300 pb-2">Content</h3>
           <div v-if="wiki.content" class="prose prose-slate max-w-none" v-html="wiki.content" v-highlight></div>
           <div v-else class="text-slate-500 italic">No content provided.</div>
         </div>
@@ -123,11 +123,11 @@ const getTags = (tagsStr) => {
       <!-- Sidebar -->
       <div class="w-full lg:w-80 space-y-6">
         
-        <div class="bg-white p-6 rounded-2xl shadow-sm border border-slate-200 space-y-6">
+        <div class="bg-slate-100 p-6 rounded-2xl shadow-sm border border-slate-300 space-y-6">
           <div>
-            <label class="block text-xs font-bold text-slate-400 uppercase tracking-wider mb-2">Author</label>
-            <div class="flex items-center space-x-3 bg-slate-50 p-2.5 rounded-lg border border-slate-100">
-              <div class="w-8 h-8 rounded-full bg-sky-100 text-sky-700 flex items-center justify-center font-bold text-xs uppercase">
+            <label class="block text-xs font-bold text-slate-500 uppercase tracking-wider mb-2">Author</label>
+            <div class="flex items-center space-x-3 bg-slate-200 p-2.5 rounded-lg border border-slate-300">
+              <div class="w-8 h-8 rounded-full bg-sky-500/20 text-sky-300 flex items-center justify-center font-bold text-xs uppercase border border-sky-500/30">
                 {{ users.find(u => u.id === wiki.author_id)?.username?.substring(0, 2) || '--' }}
               </div>
               <span class="text-sm font-semibold text-slate-800">{{ users.find(u => u.id === wiki.author_id)?.username || `User ID: ${wiki.author_id}` }}</span>
